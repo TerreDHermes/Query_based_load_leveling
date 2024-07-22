@@ -1,8 +1,6 @@
 package repository
 
 import (
-	// "backend/internal"
-
 	"backend/internal/service"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -10,19 +8,19 @@ import (
 	"gorm.io/gorm"
 )
 
+type CashProxyRepository struct {
+	service.Repository
+	Cache *lru.Cache[int, float64]
+}
+
 func NewRepository(db *gorm.DB) service.Repository {
-	return &DB{
+	return &CashProxyRepository{
 		Repository: NewPostgresRepository(db),
 		Cache:      InitCacheLRU(),
 	}
 }
 
-type DB struct { //CashProxyRepository
-	service.Repository
-	Cache *lru.Cache[int, float64]
-}
-
-func (db *DB) CreateWallet() (int, float64, error) {
+func (db *CashProxyRepository) CreateWallet() (int, float64, error) {
 	walletID, balance, err := db.Repository.CreateWallet()
 	if err == nil {
 		db.Cache.Add(walletID, balance)
@@ -30,7 +28,7 @@ func (db *DB) CreateWallet() (int, float64, error) {
 	return walletID, balance, err
 }
 
-func (db *DB) WalletInfo(id int) (int, float64, error) {
+func (db *CashProxyRepository) WalletInfo(id int) (int, float64, error) {
 	var err error
 	balance, ok := db.Cache.Get(id)
 	if ok == true {
